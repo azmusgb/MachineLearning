@@ -14,7 +14,8 @@ from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from sklearn.metrics import accuracy_score
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
+from torch.cuda.amp import GradScaler, autocast
 
 # Set up logging configuration
 log_filename = "process.log"
@@ -39,11 +40,15 @@ HTML_REPORT_PATH = os.path.join(OUTPUT_DIR, "ocr_report.html")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-# Initialize EasyOCR reader with GPU support
-logger.info("Initializing EasyOCR reader with GPU support.")
-reader = easyocr.Reader(["en"], gpu=True)
+# Detect if running in Replit
+is_replit = os.getenv('REPL_ID') is not None or os.getenv('REPL_SLUG') is not None
+logger.info(f"Running in Replit: {is_replit}")
 
-# Enhanced neural network model
+# Initialize EasyOCR reader with GPU support if not in Replit
+use_gpu = not is_replit and torch.cuda.is_available()
+logger.info(f"Initializing EasyOCR reader with GPU support: {use_gpu}.")
+reader = easyocr.Reader(["en"], gpu=use_gpu)
+
 class EnhancedModelClass(nn.Module):
     def __init__(self):
         super(EnhancedModelClass, self).__init__()
@@ -58,46 +63,43 @@ class EnhancedModelClass(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
         self.drop = nn.Dropout(0.5)
 
-        # Determine the size of the output from the final conv layer
         self._to_linear = None
-        self._init_to_linear(64, 64)  # Example input size, adjust as needed
+        self._init_to_linear(64, 64)
 
         self.fc1 = nn.Linear(self._to_linear, 512)
         self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 10)  # Assuming 10 classes
+        self.fc3 = nn.Linear(256, 10)
 
-    def _init_to_linear(self, width, height):
-        # Create a dummy tensor to find out the output size after conv layers
+    def _init_to_linear(self, width: int, height: int) -> None:
         dummy_input = torch.zeros(1, 1, width, height)
         x = self.convs(dummy_input)
         self._to_linear = x.numel()
 
-    def convs(self, x):
+    def convs(self, x: torch.Tensor) -> torch.Tensor:
         x = self.pool(torch.relu(self.bn1(self.conv1(x))))
         x = self.pool(torch.relu(self.bn2(self.conv2(x))))
         x = self.pool(torch.relu(self.bn3(self.conv3(x))))
         x = self.pool(torch.relu(self.bn4(self.conv4(x))))
         return x
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.convs(x)
-        x = x.view(x.size(0), -1)  # Flatten batch and all features into a single dimension
+        x = x.view(x.size(0), -1)
         x = self.drop(torch.relu(self.fc1(x)))
         x = self.drop(torch.relu(self.fc2(x)))
         x = self.fc3(x)
         return x
 
-# Custom dataset class for training
 class AugmentedDataset(Dataset):
-    def __init__(self, original_image, transform=None, num_augments=100):
+    def __init__(self, original_image: np.ndarray, transform: Optional[iaa.Sequential] = None, num_augments: int = 100):
         self.original_image = original_image
         self.transform = transform
         self.num_augments = num_augments
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.num_augments
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         image = self.original_image.copy()
         if self.transform:
             image = self.transform(images=[image])[0]
@@ -107,47 +109,36 @@ class AugmentedDataset(Dataset):
             image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
             image = np.expand_dims(image, axis=0)
         image = image.astype(np.float32)
-        label = idx % 10  # Simulated labels (0-9)
+        label = idx % 10
         return torch.tensor(image), torch.tensor(label)
 
-# Define the augmentation sequence
-augmentation_seq = iaa.Sequential(
-    [
-        iaa.Affine(rotate=(-10, 10)),
-        iaa.ScaleX((0.8, 1.2)),
-        iaa.ScaleY((0.8, 1.2)),
-        iaa.AdditiveGaussianNoise(scale=(10, 30)),
-        iaa.GaussianBlur(sigma=(0.0, 3.0)),
-        iaa.ShearX((-10, 10)),
-        iaa.ShearY((-10, 10)),
-        iaa.contrast.LinearContrast((0.75, 1.5)),  # Updated according to deprecation warning
-    ]
-)
+augmentation_seq = iaa.Sequential([
+    iaa.Affine(rotate=(-10, 10)),
+    iaa.ScaleX((0.8, 1.2)),
+    iaa.ScaleY((0.8, 1.2)),
+    iaa.AdditiveGaussianNoise(scale=(10, 30)),
+    iaa.GaussianBlur(sigma=(0.0, 3.0)),
+    iaa.ShearX((-10, 10)),
+    iaa.ShearY((-10, 10)),
+    iaa.contrast.LinearContrast((0.75, 1.5)),
+])
 
-# Function to load an image from file
-def load_image(image_path):
-    """Load an image from file."""
+def load_image(image_path: str) -> Optional[np.ndarray]:
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if image is None:
         logger.error(f"Unable to load image at {image_path}")
-    else:
-        logger.info(f"Loaded image: {image_path}")
+        return None
+    logger.info(f"Loaded image: {image_path}")
     return image
 
-# Function to generate augmented images
 def augment_image(image: np.ndarray) -> List[np.ndarray]:
-    """Generate augmented images."""
     if image.ndim == 2:
         image = np.expand_dims(image, axis=-1)
     images_aug = augmentation_seq(images=[image])
     logger.info("Generated augmented images.")
     return images_aug
 
-# Function to generate a synthetic image with the specified text
-def generate_synthetic_image(
-    text: str, font_path: str, image_size: Tuple[int, int]
-) -> np.ndarray:
-    """Generate a synthetic image with the specified text."""
+def generate_synthetic_image(text: str, font_path: str, image_size: Tuple[int, int]) -> np.ndarray:
     image = Image.new("RGB", image_size, (255, 255, 255))
     draw = ImageDraw.Draw(image)
     try:
@@ -160,17 +151,11 @@ def generate_synthetic_image(
     logger.info("Generated synthetic image.")
     return synthetic_image
 
-# Function to save an image to the specified filename
 def save_image(img: np.ndarray, filename: str) -> None:
-    """Save an image to the specified filename."""
     cv2.imwrite(filename, img)
     logger.info(f"Saved image: {filename}")
 
-# Function to preprocess the image and perform OCR
-def preprocess_image(
-    image_path: str,
-) -> Tuple[np.ndarray, List[Tuple[int, int, int, int]]]:
-    """Preprocess the image and perform OCR."""
+def preprocess_image(image_path: str) -> Tuple[Optional[np.ndarray], Optional[List[Tuple[int, int, int, int]]]]:
     try:
         logger.info(f"Starting preprocessing for image: {image_path}")
         img = cv2.imread(image_path)
@@ -194,14 +179,12 @@ def preprocess_image(
         logger.error(f"Error preprocessing image '{image_path}': {e}")
         return None, None
 
-def segment_text_regions(img: np.ndarray) -> List[Tuple[int, int, int, int]]]:
-    """Segment the text regions from the image."""
+def segment_text_regions(img: np.ndarray) -> List[Tuple[int, int, int, int]]:
     contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     regions = [cv2.boundingRect(c) for c in contours if cv2.contourArea(c) > 100]
     return regions
 
-def detect_language(text):
-    """Detect the language of a given text."""
+def detect_language(text: str) -> Tuple[str, float]:
     try:
         language = detect(text)
         logger.info(f"Detected language: {language}")
@@ -210,8 +193,7 @@ def detect_language(text):
         logger.error(f"Error detecting language: {e}")
         return "unknown", 0
 
-def multi_language_ocr(image, regions, min_confidence=0.5):
-    """Detect text in a given region using multi-language OCR."""
+def multi_language_ocr(image: np.ndarray, regions: List[Tuple[int, int, int, int]], min_confidence: float = 0.5) -> List[Tuple[str, str, float, float, List[Tuple[int, int]]]]:
     results = []
     min_region_size = 10
     model_path = os.path.join(MODEL_DIR, "model.pth")
@@ -251,8 +233,7 @@ def multi_language_ocr(image, regions, min_confidence=0.5):
                 )
     return results
 
-def save_annotated_image(original_image, ocr_results, output_path):
-    """Save the image with annotated text regions."""
+def save_annotated_image(original_image: np.ndarray, ocr_results: List[Tuple[str, str, float, float, List[Tuple[int, int]]]], output_path: str) -> None:
     logger.info(f"Saving annotated image to {output_path}.")
     fig, ax = plt.subplots(1)
     ax.imshow(cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB))
@@ -278,8 +259,7 @@ def save_annotated_image(original_image, ocr_results, output_path):
     plt.close()
     logger.info(f"Annotated image saved at {output_path}")
 
-def generate_html_report(image_path, ocr_results, annotated_image_path):
-    """Generate an HTML report for the OCR results."""
+def generate_html_report(image_path: str, ocr_results: List[Tuple[str, str, float, float, List[Tuple[int, int]]]], annotated_image_path: str) -> None:
     logger.info(f"Generating HTML report for {image_path}.")
     report_content = f"""
     <!DOCTYPE html>
@@ -356,8 +336,7 @@ def generate_html_report(image_path, ocr_results, annotated_image_path):
         f.write(report_content)
     logger.info(f"HTML report generated at {HTML_REPORT_PATH}")
 
-def generate_report(original_image_path: str):
-    """Generate a report of the OCR process and results."""
+def generate_report(original_image_path: str) -> None:
     logger.info(f"Generating report for {original_image_path}")
     enhanced, original_image = preprocess_image(original_image_path)
     if enhanced is None or original_image is None:
@@ -374,16 +353,18 @@ def generate_report(original_image_path: str):
 
     generate_html_report(original_image_path, ocr_results, annotated_image_path)
 
-from torch.cuda.amp import GradScaler, autocast
-
 scaler = GradScaler()
 
-def train_model(model, criterion, optimizer, train_loader, num_epochs=10):
-    """Train the model with the given dataset."""
+def train_model(
+    model: nn.Module, 
+    criterion: nn.Module, 
+    optimizer: optim.Optimizer, 
+    train_loader: DataLoader, 
+    num_epochs: int = 10
+) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    # Learning rate scheduler
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.1)
 
     best_accuracy = 0.0
@@ -419,7 +400,6 @@ def train_model(model, criterion, optimizer, train_loader, num_epochs=10):
 
         scheduler.step(epoch_loss)
 
-        # Save the best model based on accuracy
         if epoch_acc > best_accuracy:
             best_accuracy = epoch_acc
             model_save_path = os.path.join(MODEL_DIR, "best_model.pth")
@@ -428,36 +408,30 @@ def train_model(model, criterion, optimizer, train_loader, num_epochs=10):
 
     logger.info("Training complete.")
 
-def main():
+def main() -> None:
     image_path = os.path.join(INPUT_DIR, "image.jpg")
 
-    # Load the original image
     original_image = load_image(image_path)
     if original_image is None:
         return
 
-    # Ensure the original image is grayscale
     if original_image.ndim == 2:
         original_image = np.expand_dims(original_image, axis=0)
     elif original_image.ndim == 3 and original_image.shape[2] == 3:
         original_image = cv2.cvtColor(original_image, cv2.COLOR_RGB2GRAY)
         original_image = np.expand_dims(original_image, axis=0)
 
-    # Create a dataset with augmented images
     dataset = AugmentedDataset(
         original_image, transform=augmentation_seq, num_augments=500
     )
     train_loader = DataLoader(dataset, batch_size=16, shuffle=True)
 
-    # Initialize the model, loss function, and optimizer
     model = EnhancedModelClass()
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # Train the model
     train_model(model, criterion, optimizer, train_loader, num_epochs=10)
 
-    # After training, proceed with OCR and reporting
     logger.info("Processing original image for OCR and report generation.")
     generate_report(image_path)
 
