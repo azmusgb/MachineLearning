@@ -1,0 +1,7 @@
+{
+    "block_size": 17,
+    "C": 12,
+    "blur_ksize": 5,
+    "dilation_iter": 19,
+    "min_confidence": 0.5
+}
