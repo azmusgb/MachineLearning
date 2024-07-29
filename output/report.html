@@ -1,0 +1,348 @@
+
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>OCR Processing Report</title>
+            <link rel="stylesheet" href="styles.css">
+            <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        </head>
+        <body>
+            <div class="container">
+                <header>
+                    <h1>OCR Processing Report</h1>
+                    <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+                </header>
+                
+    <div class="card">
+        <h2>Original Image</h2>
+        <img src="original.jpg" alt="Original Image" class="responsive-image">
+    </div>
+    
+                
+    <div class="card">
+        <h2>Processed Image</h2>
+        <img src="processed.jpg" alt="Processed Image" class="responsive-image">
+    </div>
+    
+                
+    <div class="card carousel">
+        <h2>Augmented Images</h2>
+        <div class="carousel-container">
+            <img class="carousel-image" src="augmented_0.jpg" alt="Augmented Image 1"><img class="carousel-image" src="augmented_1.jpg" alt="Augmented Image 2"><img class="carousel-image" src="augmented_2.jpg" alt="Augmented Image 3"><img class="carousel-image" src="augmented_3.jpg" alt="Augmented Image 4"><img class="carousel-image" src="augmented_4.jpg" alt="Augmented Image 5">
+        </div>
+        <div class="carousel-controls">
+            <button id="prev" onclick="prevImage()">&#10094;</button>
+            <button id="next" onclick="nextImage()">&#10095;</button>
+        </div>
+    </div>
+    
+                
+    <div class="card">
+        <h2>Final Annotated Image</h2>
+        <img src="final_output.jpg" alt="Final Annotated Image" class="responsive-image">
+    </div>
+    
+                <div class="card">
+                    <h2>Training Progress</h2>
+                    <canvas id="trainingProgressChart"></canvas>
+                </div>
+                <div class="card">
+                    <h2>Performance Metrics</h2>
+                    <canvas id="performanceMetricsChart"></canvas>
+                </div>
+                
+    <div class="card">
+        <h2>Detected Text</h2>
+        <ul>
+            
+        <li class="tooltip">
+            <p><strong>Text:</strong> 'Wot</p>
+            <p><strong>Language:</strong> en (1.0%)</p>
+            <p><strong>Confidence:</strong> 1.0%</p>
+            <p><strong>Bounding Box:</strong> [[25, 23], [99, 23], [99, 59], [25, 59]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[25, 23], [99, 23], [99, 59], [25, 59]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> niat;</p>
+            <p><strong>Language:</strong> pl (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.5%</p>
+            <p><strong>Bounding Box:</strong> [[109, 23], [177, 23], [177, 59], [109, 59]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[109, 23], [177, 23], [177, 59], [109, 59]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> Pi Planning?</p>
+            <p><strong>Language:</strong> tl (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.9%</p>
+            <p><strong>Bounding Box:</strong> [[24, 52], [194, 52], [194, 102], [24, 102]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[24, 52], [194, 52], [194, 102], [24, 102]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> Pioteh</p>
+            <p><strong>Language:</strong> fi (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.9%</p>
+            <p><strong>Bounding Box:</strong> [[54, 111], [135, 111], [135, 144], [54, 144]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[54, 111], [135, 111], [135, 144], [54, 144]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> tr4m</p>
+            <p><strong>Language:</strong> vi (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.6%</p>
+            <p><strong>Bounding Box:</strong> [[1116, 40], [1178, 40], [1178, 64], [1116, 64]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[1116, 40], [1178, 40], [1178, 64], [1116, 64]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> helps Agihe teams</p>
+            <p><strong>Language:</strong> en (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.7%</p>
+            <p><strong>Bounding Box:</strong> [[981, 61], [1244, 61], [1244, 105], [981, 105]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[981, 61], [1244, 61], [1244, 105], [981, 105]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> PI Planning?</p>
+            <p><strong>Language:</strong> tl (1.0%)</p>
+            <p><strong>Confidence:</strong> 1.0%</p>
+            <p><strong>Bounding Box:</strong> [[634, 99], [862, 99], [862, 152], [634, 152]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[634, 99], [862, 99], [862, 152], [634, 152]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> wrk</p>
+            <p><strong>Language:</strong> pl (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.7%</p>
+            <p><strong>Bounding Box:</strong> [[1072, 98], [1138, 98], [1138, 126], [1072, 126]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[1072, 98], [1138, 98], [1138, 126], [1072, 126]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> for</p>
+            <p><strong>Language:</strong> da (1.0%)</p>
+            <p><strong>Confidence:</strong> 1.0%</p>
+            <p><strong>Bounding Box:</strong> [[1170, 96], [1216, 96], [1216, 124], [1170, 124]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[1170, 96], [1216, 96], [1216, 124], [1170, 124]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> Pioteh?</p>
+            <p><strong>Language:</strong> id (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.9%</p>
+            <p><strong>Bounding Box:</strong> [[73, 168], [169, 168], [169, 204], [73, 204]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[73, 168], [169, 168], [169, 204], [73, 204]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> 'Wot</p>
+            <p><strong>Language:</strong> en (1.0%)</p>
+            <p><strong>Confidence:</strong> 1.0%</p>
+            <p><strong>Bounding Box:</strong> [[33, 491], [107, 491], [107, 527], [33, 527]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[33, 491], [107, 491], [107, 527], [33, 527]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> niat;</p>
+            <p><strong>Language:</strong> tl (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.5%</p>
+            <p><strong>Bounding Box:</strong> [[117, 491], [185, 491], [185, 527], [117, 527]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[117, 491], [185, 491], [185, 527], [117, 527]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> Sounes</p>
+            <p><strong>Language:</strong> en (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.6%</p>
+            <p><strong>Bounding Box:</strong> [[597, 493], [701, 493], [701, 529], [597, 529]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[597, 493], [701, 493], [701, 529], [597, 529]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> Sounds like</p>
+            <p><strong>Language:</strong> no (1.0%)</p>
+            <p><strong>Confidence:</strong> 1.0%</p>
+            <p><strong>Bounding Box:</strong> [[979, 497], [1144, 497], [1144, 539], [979, 539]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[979, 497], [1144, 497], [1144, 539], [979, 539]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> Pi Planning?</p>
+            <p><strong>Language:</strong> tl (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.9%</p>
+            <p><strong>Bounding Box:</strong> [[32, 520], [202, 520], [202, 568], [32, 568]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[32, 520], [202, 520], [202, 568], [32, 568]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> PIE</p>
+            <p><strong>Language:</strong> tl (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.6%</p>
+            <p><strong>Bounding Box:</strong> [[289, 531], [353, 531], [353, 573], [289, 573]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[289, 531], [353, 531], [353, 573], [289, 573]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> Pigery</p>
+            <p><strong>Language:</strong> da (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.7%</p>
+            <p><strong>Bounding Box:</strong> [[353, 493], [495, 493], [495, 585], [353, 585]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[353, 493], [495, 493], [495, 585], [353, 585]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> Program tork to me?</p>
+            <p><strong>Language:</strong> en (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.8%</p>
+            <p><strong>Bounding Box:</strong> [[564, 557], [843, 557], [843, 600], [564, 600]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[564, 557], [843, 557], [843, 600], [564, 600]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> to mel</p>
+            <p><strong>Language:</strong> it (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.8%</p>
+            <p><strong>Bounding Box:</strong> [[1048, 572], [1144, 572], [1144, 604], [1048, 604]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[1048, 572], [1144, 572], [1144, 604], [1048, 604]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> heles</p>
+            <p><strong>Language:</strong> nl (1.0%)</p>
+            <p><strong>Confidence:</strong> 0.9%</p>
+            <p><strong>Bounding Box:</strong> [[783.1135155856441, 487.09946857683417], [862.8533720085701, 500.92690906090456], [854.8864844143559, 538.9005314231658], [776.1466279914299, 525.0730909390954]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[783.1135155856441, 487.09946857683417], [862.8533720085701, 500.92690906090456], [854.8864844143559, 538.9005314231658], [776.1466279914299, 525.0730909390954]]</span>
+        </li>
+        
+        <li class="tooltip">
+            <p><strong>Text:</strong> goals</p>
+            <p><strong>Language:</strong> ca (1.0%)</p>
+            <p><strong>Confidence:</strong> 1.0%</p>
+            <p><strong>Bounding Box:</strong> [[579.4050955543422, 530.331719774987], [659.5059056719941, 524.0742208280595], [661.5949044456578, 560.668280225013], [581.4940943280059, 566.9257791719405]]</p>
+            <span class="tooltiptext">Bounding Box Coordinates: [[579.4050955543422, 530.331719774987], [659.5059056719941, 524.0742208280595], [661.5949044456578, 560.668280225013], [581.4940943280059, 566.9257791719405]]</span>
+        </li>
+        
+        </ul>
+    </div>
+    
+            </div>
+            <script>
+                var training_progress = [0.1, 0.08, 0.07, 0.05];
+                var validation_accuracy = [0.8, 0.85, 0.88, 0.9];
+                var performance_metrics = {'Class A': (0.95, 0.92, 0.93), 'Class B': (0.88, 0.85, 0.86)};
+
+                var ctxTraining = document.getElementById('trainingProgressChart').getContext('2d');
+                var trainingProgressChart = new Chart(ctxTraining, {
+                    type: 'line',
+                    data: {
+                        labels: [...Array(training_progress.length).keys()],
+                        datasets: [{
+                            label: 'Training Loss',
+                            data: training_progress,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'Validation Accuracy',
+                            data: validation_accuracy,
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Epochs'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Value'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                var ctxPerformance = document.getElementById('performanceMetricsChart').getContext('2d');
+                var performanceMetricsChart = new Chart(ctxPerformance, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(performance_metrics),
+                        datasets: [{
+                            label: 'Precision',
+                            data: Object.values(performance_metrics).map(m => m[0]),
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }, {
+                            label: 'Recall',
+                            data: Object.values(performance_metrics).map(m => m[1]),
+                            backgroundColor: 'rgba(153, 102, 255, 0.5)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 1
+                        }, {
+                            label: 'F1 Score',
+                            data: Object.values(performance_metrics).map(m => m[2]),
+                            backgroundColor: 'rgba(255, 159, 64, 0.5)',
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Classes'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Scores'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                var currentIndex = 0;
+                showImage(currentIndex);
+
+                function showImage(index) {
+                    var images = document.querySelectorAll('.carousel-image');
+                    images.forEach((img, i) => {
+                        img.classList.remove('active');
+                        if (i === index) {
+                            img.classList.add('active');
+                        }
+                    });
+                }
+
+                function prevImage() {
+                    currentIndex = (currentIndex === 0) ? document.querySelectorAll('.carousel-image').length - 1 : currentIndex - 1;
+                    showImage(currentIndex);
+                }
+
+                function nextImage() {
+                    currentIndex = (currentIndex === document.querySelectorAll('.carousel-image').length - 1) ? 0 : currentIndex + 1;
+                    showImage(currentIndex);
+                }
+
+                function toggleDarkMode() {
+                    document.body.classList.toggle('dark-mode');
+                }
+            </script>
+        </body>
+        </html>
+        
